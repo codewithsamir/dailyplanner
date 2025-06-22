@@ -1,5 +1,6 @@
 'use client';
 
+// A simple toggle component for notifications
 interface NotificationToggleProps {
   enabled: boolean;
   onToggle: () => void;

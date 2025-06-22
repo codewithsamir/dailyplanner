@@ -6,10 +6,10 @@ import TaskItem from './TaskItem';
 interface TaskListProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
-  onDelete: (id: number) => void;
-  onToggleReminder: (id: number) => void;
-  onUpdateStatus: (id: number, status: 'remaining' | 'done' | 'failed') => void;
-  onUpdateReason: (id: number, reason: string) => void;
+  onDelete: (id: Task['_id']) => void;
+  onToggleReminder: (id: Task['_id']) => void;
+  onUpdateStatus: (id: Task['_id'], status: 'remaining' | 'done' | 'failed') => void;
+  onUpdateReason: (id: Task['_id'], reason: string) => void;
 }
 
 export default function TaskList({ tasks, onEdit, onDelete, onToggleReminder, onUpdateStatus, onUpdateReason }: TaskListProps) {
@@ -21,7 +21,7 @@ export default function TaskList({ tasks, onEdit, onDelete, onToggleReminder, on
     <div className="space-y-4">
       {tasks.map((task) => (
         <TaskItem
-          key={task.id}
+          key={task._id?.toString()}
           task={task}
           onEdit={onEdit}
           onDelete={onDelete}

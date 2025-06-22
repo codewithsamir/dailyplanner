@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { Task } from '@/types';
 import clientPromise from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     const collection = db.collection('tasks');
     
     const filteredTasks = await collection
-      .find({ date, userEmail: session.user!.email })
+      .find({ date, userId: session.user.id })
       .toArray();
     
     return NextResponse.json(filteredTasks);
@@ -31,20 +32,20 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const task: Omit<Task, 'id'> = await request.json();
-    const newTask: Task = { ...task, id: Date.now(), userEmail: session.user!.email };
+    const task: Omit<Task, '_id'> = await request.json();
+    const newTask: Task = { ...task, userId: session.user.id };
     
     const client = await clientPromise;
     const db = client.db('dailyplanner');
     const collection = db.collection('tasks');
     
-    await collection.insertOne(newTask);
-    return NextResponse.json(newTask, { status: 201 });
+    const result = await collection.insertOne(newTask);
+    return NextResponse.json({ ...newTask, _id: result.insertedId }, { status: 201 });
   } catch (error) {
     console.error('Database error:', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
@@ -53,27 +54,31 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const updatedTask: Task = await request.json();
+    const { _id, ...taskData }: Task = await request.json();
 
-    if (updatedTask.userEmail !== session.user!.email) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    if (!ObjectId.isValid(_id!)) {
+      return NextResponse.json({ message: 'Invalid task ID' }, { status: 400 });
     }
-
+    
     const client = await clientPromise;
     const db = client.db('dailyplanner');
     const collection = db.collection('tasks');
     
-    await collection.updateOne(
-      { id: updatedTask.id, userEmail: session.user!.email },
-      { $set: updatedTask }
+    const result = await collection.updateOne(
+      { _id: new ObjectId(_id), userId: session.user.id },
+      { $set: taskData }
     );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ message: 'Forbidden or task not found' }, { status: 403 });
+    }
     
-    return NextResponse.json(updatedTask);
+    return NextResponse.json({ _id, ...taskData });
   } catch (error) {
     console.error('Database error:', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
@@ -82,24 +87,28 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { id } = await request.json();
+    const { _id } = await request.json();
+
+    if (!ObjectId.isValid(_id)) {
+      return NextResponse.json({ message: 'Invalid task ID' }, { status: 400 });
+    }
     
     const client = await clientPromise;
     const db = client.db('dailyplanner');
     const collection = db.collection('tasks');
     
     const result = await collection.deleteOne({ 
-      id, 
-      userEmail: session.user!.email 
+      _id: new ObjectId(_id), 
+      userId: session.user.id 
     });
     
     if (result.deletedCount === 0) {
-      return NextResponse.json({ message: 'Task not found' }, { status: 404 });
+      return NextResponse.json({ message: 'Task not found or forbidden' }, { status: 404 });
     }
     
     return new Response(null, { status: 204 });

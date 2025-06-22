@@ -8,7 +8,7 @@ import TaskForm from '@/components/TaskForm';
 import { Task } from '@/types';
 import toast from 'react-hot-toast';
 
-type TaskFormData = Omit<Task, 'id' | 'userEmail' | 'date' | 'status' | 'reason'>;
+type TaskFormData = Omit<Task, '_id' | 'userId' | 'date' | 'status' | 'reason'>;
 
 export default function TasksPage() {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function TasksPage() {
 
       tasks.forEach(task => {
         if (task.time === currentTime && task.reminder && task.status === 'remaining') {
-          const notificationKey = `notification-sent-${task.id}-${date}`;
+          const notificationKey = `notification-sent-${task._id}-${date}`;
           if (!localStorage.getItem(notificationKey)) {
             new Notification(`Reminder: ${task.title}`);
             new Audio('/audio/beep.mp3').play().catch(e => console.error("Error playing sound:", e));
@@ -74,7 +74,7 @@ export default function TasksPage() {
     }
   }, [date]);
 
-  const saveTasks = async (method: 'POST' | 'PUT' | 'DELETE', body?: Partial<Task> | { id: number }) => {
+  const saveTasks = async (method: 'POST' | 'PUT' | 'DELETE', body?: Partial<Task> | { _id: Task['_id'] }) => {
     const options = {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -98,8 +98,8 @@ export default function TasksPage() {
     setIsModalOpen(false);
   };
 
-  const handleUpdateTaskStatus = (id: number, status: 'remaining' | 'done' | 'failed') => {
-    const taskToUpdate = tasks.find(t => t.id === id);
+  const handleUpdateTaskStatus = (id: Task['_id'], status: 'remaining' | 'done' | 'failed') => {
+    const taskToUpdate = tasks.find(t => t._id === id);
     if (taskToUpdate) {
       const updatedTask = { ...taskToUpdate, status };
        if (status !== 'failed') {
@@ -109,16 +109,16 @@ export default function TasksPage() {
     }
   };
 
-  const handleUpdateTaskReason = (id: number, reason: string) => {
-    const taskToUpdate = tasks.find(t => t.id === id);
+  const handleUpdateTaskReason = (id: Task['_id'], reason: string) => {
+    const taskToUpdate = tasks.find(t => t._id === id);
      if (taskToUpdate) {
       const updatedTask = { ...taskToUpdate, reason };
       saveTasks('PUT', updatedTask);
     }
   };
 
-  const handleDeleteTask = (id: number) => {
-    saveTasks('DELETE', { id }).then(() => toast.success('Task deleted successfully!'));
+  const handleDeleteTask = (id: Task['_id']) => {
+    saveTasks('DELETE', { _id: id }).then(() => toast.success('Task deleted successfully!'));
   };
 
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,8 +165,8 @@ export default function TasksPage() {
               setIsModalOpen(true);
             }}
             onDelete={handleDeleteTask}
-            onToggleReminder={(id: number) => {
-              const taskToUpdate = tasks.find(t => t.id === id);
+            onToggleReminder={(id: Task['_id']) => {
+              const taskToUpdate = tasks.find(t => t._id === id);
               if (taskToUpdate) {
                 const updatedTask = { ...taskToUpdate, reminder: !taskToUpdate.reminder };
                 saveTasks('PUT', updatedTask);

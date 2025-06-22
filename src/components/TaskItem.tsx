@@ -6,10 +6,10 @@ import NotificationToggle from './NotificationToggle';
 interface TaskItemProps {
   task: Task;
   onEdit: (task: Task) => void;
-  onDelete: (id: number) => void;
-  onToggleReminder: (id: number) => void;
-  onUpdateStatus: (id: number, status: 'remaining' | 'done' | 'failed') => void;
-  onUpdateReason: (id: number, reason: string) => void;
+  onDelete: (id: Task['_id']) => void;
+  onToggleReminder: (id: Task['_id']) => void;
+  onUpdateStatus: (id: Task['_id'], status: 'remaining' | 'done' | 'failed') => void;
+  onUpdateReason: (id: Task['_id'], reason: string) => void;
 }
 
 const statusStyles = {
@@ -20,7 +20,7 @@ const statusStyles = {
 
 export default function TaskItem({ task, onEdit, onDelete, onToggleReminder, onUpdateStatus, onUpdateReason }: TaskItemProps) {
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onUpdateStatus(task.id, e.target.value as 'remaining' | 'done' | 'failed');
+    onUpdateStatus(task._id, e.target.value as 'remaining' | 'done' | 'failed');
   };
 
   return (
@@ -41,12 +41,12 @@ export default function TaskItem({ task, onEdit, onDelete, onToggleReminder, onU
           </select>
           <NotificationToggle
             enabled={task.reminder}
-            onToggle={() => onToggleReminder(task.id)}
+            onToggle={() => onToggleReminder(task._id)}
           />
           <button onClick={() => onEdit(task)} className="p-2 text-blue-600 hover:text-blue-800">
             Edit
           </button>
-          <button onClick={() => onDelete(task.id)} className="p-2 text-red-600 hover:text-red-800">
+          <button onClick={() => onDelete(task._id)} className="p-2 text-red-600 hover:text-red-800">
             Delete
           </button>
         </div>
@@ -57,7 +57,7 @@ export default function TaskItem({ task, onEdit, onDelete, onToggleReminder, onU
             type="text"
             placeholder="Reason for failure"
             value={task.reason || ''}
-            onChange={(e) => onUpdateReason(task.id, e.target.value)}
+            onChange={(e) => onUpdateReason(task._id, e.target.value)}
             className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:text-white text-sm"
           />
         </div>

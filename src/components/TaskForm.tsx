@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Task } from '@/types';
 
-type TaskFormData = Omit<Task, 'id' | 'userEmail' | 'date' | 'status' | 'reason'>;
+type TaskFormData = Omit<Task, '_id' | 'userId' | 'date' | 'status' | 'reason'>;
 
 interface TaskFormProps {
   onSubmit: (taskData: TaskFormData) => void;
