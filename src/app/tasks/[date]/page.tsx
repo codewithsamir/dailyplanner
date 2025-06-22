@@ -8,11 +8,13 @@ import TaskForm from '@/components/TaskForm';
 import { Task } from '@/types';
 import toast from 'react-hot-toast';
 
+type TaskFormData = Omit<Task, 'id' | 'userEmail' | 'date' | 'status' | 'reason'>;
+
 export default function TasksPage() {
   const router = useRouter();
   const params = useParams();
   const date = params.date as string;
-  const { data: session, status } = useSession({
+  const { data: session } = useSession({
     required: true,
     onUnauthenticated() {
       router.push('/');
@@ -72,7 +74,7 @@ export default function TasksPage() {
     }
   }, [date]);
 
-  const saveTasks = async (updatedTasks: Task[], method: 'POST' | 'PUT' | 'DELETE', body?: any) => {
+  const saveTasks = async (method: 'POST' | 'PUT' | 'DELETE', body?: Partial<Task> | { id: number }) => {
     const options = {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -84,43 +86,39 @@ export default function TasksPage() {
     return response;
   };
 
-  const handleAddTask = (task: Omit<Task, 'id' | 'status' | 'date' | 'userEmail'>) => {
-    const newTask = { ...task, id: Date.now(), status: 'remaining' as const, date };
-    saveTasks(tasks, 'POST', newTask).then(() => toast.success('Task added successfully!'));
-    setIsModalOpen(false);
-  };
-
-  const handleUpdateTask = (updatedTask: Task | Omit<Task, 'id' | 'status' | 'date' | 'userEmail'>) => {
-    saveTasks(tasks, 'PUT', updatedTask).then(() => toast.success('Task updated successfully!'));
+  const handleFormSubmit = (taskData: TaskFormData) => {
+    if (editingTask) {
+      const updatedTask = { ...editingTask, ...taskData };
+      saveTasks('PUT', updatedTask).then(() => toast.success('Task updated successfully!'));
+    } else {
+      const newTaskData = { ...taskData, date, status: 'remaining' as const };
+      saveTasks('POST', newTaskData).then(() => toast.success('Task added successfully!'));
+    }
     setEditingTask(null);
     setIsModalOpen(false);
   };
 
   const handleUpdateTaskStatus = (id: number, status: 'remaining' | 'done' | 'failed') => {
-    const updatedTasks = tasks.map((task) => {
-      if (task.id === id) {
-        const updatedTask = { ...task, status };
-        if (status !== 'failed') {
+    const taskToUpdate = tasks.find(t => t.id === id);
+    if (taskToUpdate) {
+      const updatedTask = { ...taskToUpdate, status };
+       if (status !== 'failed') {
           delete updatedTask.reason;
         }
-        return updatedTask;
-      }
-      return task;
-    });
-    const taskToUpdate = updatedTasks.find(t => t.id === id);
-    saveTasks(updatedTasks, 'PUT', taskToUpdate).then(() => toast.success('Task status updated!'));
+      saveTasks('PUT', updatedTask).then(() => toast.success('Task status updated!'));
+    }
   };
 
   const handleUpdateTaskReason = (id: number, reason: string) => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === id ? { ...task, reason } : task
-    );
-    const taskToUpdate = updatedTasks.find(t => t.id === id);
-    saveTasks(updatedTasks, 'PUT', taskToUpdate);
+    const taskToUpdate = tasks.find(t => t.id === id);
+     if (taskToUpdate) {
+      const updatedTask = { ...taskToUpdate, reason };
+      saveTasks('PUT', updatedTask);
+    }
   };
 
   const handleDeleteTask = (id: number) => {
-    saveTasks(tasks, 'DELETE', { id }).then(() => toast.success('Task deleted successfully!'));
+    saveTasks('DELETE', { id }).then(() => toast.success('Task deleted successfully!'));
   };
 
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +152,7 @@ export default function TasksPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
           <TaskForm
-            onSubmit={editingTask ? handleUpdateTask : handleAddTask}
+            onSubmit={handleFormSubmit}
             editingTask={editingTask}
             onCancel={() => setEditingTask(null)}
           />
@@ -168,11 +166,11 @@ export default function TasksPage() {
             }}
             onDelete={handleDeleteTask}
             onToggleReminder={(id: number) => {
-              const updatedTasks = tasks.map((task) =>
-                task.id === id ? { ...task, reminder: !task.reminder } : task
-              );
-              const taskToUpdate = updatedTasks.find(t => t.id === id);
-              saveTasks(updatedTasks, 'PUT', taskToUpdate);
+              const taskToUpdate = tasks.find(t => t.id === id);
+              if (taskToUpdate) {
+                const updatedTask = { ...taskToUpdate, reminder: !taskToUpdate.reminder };
+                saveTasks('PUT', updatedTask);
+              }
             }}
             onUpdateStatus={handleUpdateTaskStatus}
             onUpdateReason={handleUpdateTaskReason}
@@ -183,7 +181,7 @@ export default function TasksPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-md">
             <TaskForm
-              onSubmit={editingTask ? handleUpdateTask : handleAddTask}
+              onSubmit={handleFormSubmit}
               editingTask={editingTask}
               onCancel={() => {
                 setEditingTask(null);

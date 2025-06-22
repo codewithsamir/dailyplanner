@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Task } from '@/types';
 
+type TaskFormData = Omit<Task, 'id' | 'userEmail' | 'date' | 'status' | 'reason'>;
+
 interface TaskFormProps {
-  onSubmit: (task: Omit<Task, 'id' | 'status' | 'date'> | Task) => void;
+  onSubmit: (taskData: TaskFormData) => void;
   editingTask: Task | null;
   onCancel: () => void;
 }
@@ -38,12 +40,7 @@ export default function TaskForm({ onSubmit, editingTask, onCancel }: TaskFormPr
       return;
     }
     setError('');
-    const taskData = { title, description, time, reminder };
-    if (editingTask) {
-      onSubmit({ ...taskData, id: editingTask.id, status: editingTask.status, reason: editingTask.reason, date: editingTask.date });
-    } else {
-      onSubmit(taskData);
-    }
+    onSubmit({ title, description, time, reminder });
     setTitle('');
     setDescription('');
     setTime('');
